@@ -1,6 +1,5 @@
 # plumber.R
 library(plumber)
-library(here)
 library(stringr)
 
 
@@ -25,7 +24,7 @@ function(repo, word) {
 	print(glue::glue('{repo} / {word}'))
 
 	# change dir so we don't print the filepath
-	setwd(here('clones',repo))
+	setwd(file.path(config::get('clonedir'), repo))
 
         # This is very ugly, but ag returns exit 1 on match-not-found
 	suppressWarnings(

@@ -1,0 +1,11 @@
+default:
+  cachedir: /tmp
+  clonedir: !expr here::here("clones")
+  gdrive_history: true
+  repos:
+    - https://github.com/conscious-lang/dashboard-backend
+
+container:
+  cachedir: /srv/pins
+  clonedir: /srv/repos/git
+  gdrive_history: false

@@ -3,18 +3,29 @@ library(glue)
 library(here)
 library(googledrive)
 
-pins::board_register_local(name = 'conscious_lang', cache = '/tmp')
+pins::board_register_local(name = 'conscious_lang', cache = config::get('cachedir'))
 
 d <- pins::pin_get('cl_results',board='conscious_lang')
-h <- pins::pin_get('cl_hist',board='conscious_lang')
-
 d %>%
 	mutate(date = Sys.Date()) %>%
-	relocate(date,.before = url) %>%
-	bind_rows(h) %>%
-	distinct(date, url, .keep_all = TRUE) -> h1
+	relocate(date,.before = url) -> d1
+
+h1 <- tryCatch(
+    {
+        pins::pin_get('cl_hist',board='conscious_lang') %>%
+          bind_rows(d1) %>%
+          distinct(date, url, .keep_all = TRUE)
+    },
+    error=function(cond) {
+        message('Could not load cl_hist pin, is this the first run?')
+        message(cond)
+        return(d1)
+    }
+)
 
 h1 %>% pins::pin('cl_hist',board='conscious_lang')
+
+if (!config::get('gdrive_history')) { quit() }
 
 # Push h1 to GDrive as a backup
 

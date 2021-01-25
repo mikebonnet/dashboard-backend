@@ -7,14 +7,14 @@ library(furrr)
 
 setwd(here())
 
-pins::board_register_local(name = 'conscious_lang', cache = '/tmp')
+board_register_local(name = 'conscious_lang', cache = config::get('cachedir'))
 
 repos <- pin_get('cl_results', board = 'conscious_lang') %>%
   select(url, org, repo)
 
 count_words <- function(org, repo, regx) {
   # Search path for this repo
-  path = here('clones', org, repo)
+  path = file.path(config::get('clonedir'), org, repo)
 
   # This is very ugly, but ag returns exit 1 on match-not-found
   suppressWarnings(

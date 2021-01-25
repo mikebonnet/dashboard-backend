@@ -8,7 +8,7 @@ library(furrr)
 
 setwd(here())
 
-pins::board_register_local(name = 'conscious_lang', cache = '/tmp')
+board_register_local(name = 'conscious_lang', cache = config::get('cachedir'))
 
 repos <- pin_get('cl_projects', board = 'conscious_lang') %>%
   # split up the path so we can use it for things
@@ -35,13 +35,14 @@ repos <- pin_get('cl_projects', board = 'conscious_lang') %>%
 # altogether easier to delete "clones" and start again. 20Gb of bandwidth a week
 # is not so bad.
 
+clonedir <- config::get('clonedir')
 # Clean the holding area
-if (dir.exists(here('clones'))) { unlink(here('clones'), recursive = T) }
+if (dir.exists(clonedir)) { unlink(clonedir, recursive = T) }
 
 # Create necessary dirs
-dir.create(here('clones'))
+dir.create(clonedir)
 for (dir in unique(repos$org)) {
-  if (!dir.exists(here('clones',dir))) { dir.create(here('clones',dir))}
+  if (!dir.exists(file.path(clonedir, dir))) { dir.create(file.path(clonedir, dir)) }
 }
 
 # Clone the repos
@@ -56,14 +57,14 @@ safe_clone = possibly(clone_to_path, otherwise = NA)
 plan(multiprocess, workers=4)
 repos <- repos %>%
   mutate(pull = future_map2(url,
-                     str_c('clones',org,repo,sep='/'),
+                     file.path(clonedir, org, repo),
                      safe_clone,
                      .progress = TRUE))
 
 # Note the failures
 repos %>%
   filter(is.na(pull)) %>%
-  mutate(pull = dir.exists(here('clones',org,repo))) %>%
+  mutate(pull = dir.exists(file.path(clonedir, org, repo))) %>%
   select(url, pull) -> failures
 
 pin(failures,name='cl_fails', board = 'conscious_lang')
