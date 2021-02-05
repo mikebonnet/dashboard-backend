@@ -25,6 +25,7 @@ repos <- pin_get('cl_projects', board = 'conscious_lang') %>%
          repo = map_chr(path, ~{ unlist(.x) %>%
                                    tail(1) })
   ) %>%
+  mutate(repo = sub('\\.git$', '', repo)) %>%
   filter(!is.na(org)) %>%
   filter(!(org == '')) %>%
   select(url, org, repo)
