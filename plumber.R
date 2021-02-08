@@ -12,6 +12,7 @@ clean_ag_output <- function(string) {
 	data.frame(File = name, Count = value)
 }
 
+CLONE_DIR <- config::get('clonedir')
 
 # /search -----------------------------------------------------------------
 
@@ -24,7 +25,7 @@ function(repo, word) {
 	print(glue::glue('{repo} / {word}'))
 
 	# change dir so we don't print the filepath
-	setwd(file.path(config::get('clonedir'), repo))
+	setwd(file.path(CLONE_DIR, repo))
 
         # This is very ugly, but ag returns exit 1 on match-not-found
 	suppressWarnings(
