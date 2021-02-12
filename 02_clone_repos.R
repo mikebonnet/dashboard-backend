@@ -18,17 +18,20 @@ repos <- pin_get('cl_projects', board = 'conscious_lang') %>%
                                     unlist() %>%
                                     length() })
   ) %>%
+  { if ('branch' %in% names(.)) { . } else { mutate(., branch=NA) } } %>%
+  { if ('org' %in% names(.)) { rename(., org_from_config=org) } else { mutate(., org_from_config=NA) } } %>%
   mutate(org  = map2_chr(path, parts, ~{ unlist(.x) %>%
                                          head(.y) %>%
                                          tail(2) %>%
                                          head(1) }),
+         org = ifelse(is.na(org_from_config), org, org_from_config),
          repo = map_chr(path, ~{ unlist(.x) %>%
                                    tail(1) })
   ) %>%
   mutate(repo = sub('\\.git$', '', repo)) %>%
   filter(!is.na(org)) %>%
   filter(!(org == '')) %>%
-  select(url, org, repo)
+  select(url, org, repo, branch)
 
 # We need to avoid conflicts when updating git repos *and* remove dirs no
 # longer listed in the spreadsheet. While we *could* do this with "git reset"
@@ -47,9 +50,15 @@ for (dir in unique(repos$org)) {
 }
 
 # Clone the repos
-clone_to_path <- function(url, path) {
+clone_to_path <- function(url, path, branch) {
+  if (!is.na(branch)) {
+    args <- c('clone', '--depth', '1', '--branch', branch, '--quiet', url, path)
+  } else {
+    args <- c('clone', '--depth', '1', '--quiet', url, path)
+  }
+  message(paste(c('Running:', 'git', args), collapse=' '))
   # Can't depth-1 clone with git2r
-  system2('git', c('clone', '--depth', '1', '--quiet', url, path))
+  system2('git', args)
 }
 # Do it nicely, don't break the loop
 safe_clone = possibly(clone_to_path, otherwise = NA)
@@ -57,14 +66,13 @@ safe_clone = possibly(clone_to_path, otherwise = NA)
 # Clone repos, parallel
 plan(multiprocess, workers=4)
 repos <- repos %>%
-  mutate(pull = future_map2(url,
-                     file.path(clonedir, org, repo),
-                     safe_clone,
-                     .progress = TRUE))
+  mutate(pull = future_pmap(list(url, file.path(clonedir, org, repo), branch),
+                            safe_clone,
+                            .progress = TRUE))
 
 # Note the failures
 repos %>%
-  filter(is.na(pull)) %>%
+  filter(is.na(pull) | pull != 0) %>%
   mutate(pull = dir.exists(file.path(clonedir, org, repo))) %>%
   select(url, pull) -> failures
 
