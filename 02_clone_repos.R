@@ -13,25 +13,19 @@ board_register_local(name = 'conscious_lang', cache = config::get('cachedir'))
 repos <- pin_get('cl_projects', board = 'conscious_lang') %>%
   # split up the path so we can use it for things
   mutate(url   = repo,
-         path  = str_split(url,'/'),
-         parts = map_int(path, ~{ .x %>%
-                                    unlist() %>%
-                                    length() })
+         path  = str_split(url,'/')
   ) %>%
   { if ('branch' %in% names(.)) { . } else { mutate(., branch=NA) } } %>%
-  { if ('org' %in% names(.)) { rename(., org_from_config=org) } else { mutate(., org_from_config=NA) } } %>%
-  mutate(org  = map2_chr(path, parts, ~{ unlist(.x) %>%
-                                         head(.y) %>%
-                                         tail(2) %>%
-                                         head(1) }),
-         org = ifelse(is.na(org_from_config), org, org_from_config),
+  { if ('org' %in% names(.)) { . } else { mutate(., org=NA) } } %>%
+  mutate(prefix  = map_chr(path, ~{ unlist(.x) %>%
+                                    tail(2) %>%
+                                    head(1) }),
+         org = ifelse(is.na(org), prefix, org),
          repo = map_chr(path, ~{ unlist(.x) %>%
                                    tail(1) })
   ) %>%
   mutate(repo = sub('\\.git$', '', repo)) %>%
-  filter(!is.na(org)) %>%
-  filter(!(org == '')) %>%
-  select(url, org, repo, branch)
+  select(url, org, prefix, repo, branch)
 
 # We need to avoid conflicts when updating git repos *and* remove dirs no
 # longer listed in the spreadsheet. While we *could* do this with "git reset"

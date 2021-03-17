@@ -10,7 +10,7 @@ setwd(here())
 board_register_local(name = 'conscious_lang', cache = config::get('cachedir'))
 
 repos <- pin_get('cl_results', board = 'conscious_lang') %>%
-  select(url, org, repo)
+  select(url, org, prefix, repo, branch)
 
 count_words <- function(org, repo, regx) {
   # Search path for this repo
@@ -45,5 +45,4 @@ repos %>%
   ) -> repos
 
 repos %>%
-  filter(blacklist + whitelist + master + slave > 0) %>%
   pin(name='cl_results', board = 'conscious_lang')
