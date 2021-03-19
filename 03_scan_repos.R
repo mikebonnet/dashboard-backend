@@ -10,11 +10,12 @@ setwd(here())
 board_register_local(name = 'conscious_lang', cache = config::get('cachedir'))
 
 repos <- pin_get('cl_results', board = 'conscious_lang') %>%
-  select(url, org, prefix, repo, branch)
+  filter(pull == 0) %>%
+  select(url, org, prefix, repo, branch, name)
 
-count_words <- function(org, repo, regx) {
+count_words <- function(org, name, regx) {
   # Search path for this repo
-  path = file.path(config::get('clonedir'), org, repo)
+  path = file.path(config::get('clonedir'), org, name)
 
   # This is very ugly, but ag returns exit 1 on match-not-found
   suppressWarnings(
@@ -38,10 +39,10 @@ count_words <- function(org, repo, regx) {
 # Count words in clone
 plan(multiprocess, workers=2)
 repos %>%
-  mutate(blacklist = future_map2_int(org, repo, count_words, 'black[-_]?list', .progress = TRUE),
-         whitelist = future_map2_int(org, repo, count_words, 'white[-_]?list', .progress = TRUE),
-         master    = future_map2_int(org, repo, count_words, 'master',         .progress = TRUE),
-         slave     = future_map2_int(org, repo, count_words, 'slave',          .progress = TRUE)
+  mutate(blacklist = future_map2_int(org, name, count_words, 'black[-_]?list', .progress = TRUE),
+         whitelist = future_map2_int(org, name, count_words, 'white[-_]?list', .progress = TRUE),
+         master    = future_map2_int(org, name, count_words, 'master',         .progress = TRUE),
+         slave     = future_map2_int(org, name, count_words, 'slave',          .progress = TRUE)
   ) -> repos
 
 repos %>%

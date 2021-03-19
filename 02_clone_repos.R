@@ -17,15 +17,17 @@ repos <- pin_get('cl_projects', board = 'conscious_lang') %>%
   ) %>%
   { if ('branch' %in% names(.)) { . } else { mutate(., branch=NA) } } %>%
   { if ('org' %in% names(.)) { . } else { mutate(., org=NA) } } %>%
+  { if ('name' %in% names(.)) { . } else { mutate(., name=NA) } } %>%
   mutate(prefix  = map_chr(path, ~{ unlist(.x) %>%
                                     tail(2) %>%
                                     head(1) }),
          org = ifelse(is.na(org), prefix, org),
          repo = map_chr(path, ~{ unlist(.x) %>%
-                                   tail(1) })
+                                   tail(1) }),
+         repo = sub('\\.git$', '', repo),
+         name = ifelse(is.na(name), repo, name)
   ) %>%
-  mutate(repo = sub('\\.git$', '', repo)) %>%
-  select(url, org, prefix, repo, branch)
+  select(url, org, prefix, repo, branch, name)
 
 # We need to avoid conflicts when updating git repos *and* remove dirs no
 # longer listed in the spreadsheet. While we *could* do this with "git reset"
@@ -60,14 +62,13 @@ safe_clone = possibly(clone_to_path, otherwise = NA)
 # Clone repos, parallel
 plan(multiprocess, workers=4)
 repos <- repos %>%
-  mutate(pull = future_pmap(list(url, file.path(clonedir, org, repo), branch),
+  mutate(pull = future_pmap(list(url, file.path(clonedir, org, name), branch),
                             safe_clone,
                             .progress = TRUE))
 
 # Note the failures
 repos %>%
   filter(is.na(pull) | pull != 0) %>%
-  mutate(pull = dir.exists(file.path(clonedir, org, repo))) %>%
   select(url, pull) -> failures
 
 pin(failures,name='cl_fails', board = 'conscious_lang')
